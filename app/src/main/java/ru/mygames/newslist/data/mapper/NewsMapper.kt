@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 object NewsMapper {
-    private val formatter = DateTimeFormatter.ISO_LOCAL_DATE
+    private val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
     fun NewsDto.toDomain(): News = News(
         id = id,

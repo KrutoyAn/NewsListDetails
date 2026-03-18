@@ -2,41 +2,14 @@ package ru.mygames.newslist.presentation.newsList
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,36 +33,41 @@ fun NewsListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val filteredNews = remember(uiState.news, uiState.selectedTab) {
+        uiState.news.filter {
+            if (uiState.selectedTab == NewsTab.PROMOTIONS) !it.isNew else it.isNew
+        }
+    }
+
     Scaffold(
         bottomBar = { BottomNavigationBar() }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Color.White)
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .background(Color.White)
         ) {
-            Text(
-                text = "Информация",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
 
-            CustomTabRow(
-                selectedTab = uiState.selectedTab,
-                onTabSelected = viewModel::onTabSelected
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                uiState.isLoading -> LoadingIndicator()
-                uiState.error != null -> ErrorMessage(uiState.error!!)
-                else -> NewsList(
-                    news = uiState.news,
-                    onNewsClick = onNewsClick
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "Информация",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(start = 16.dp, top = 32.dp, end = 16.dp, bottom = 16.dp)
                 )
+
+                CustomTabRow(
+                    selectedTab = uiState.selectedTab,
+                    onTabSelected = viewModel::onTabSelected
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when {
+                    uiState.isLoading -> LoadingIndicator()
+                    uiState.error != null -> ErrorMessage(uiState.error!!)
+                    else -> NewsList(news = filteredNews, onNewsClick = onNewsClick)
+                }
             }
         }
     }
@@ -106,18 +84,13 @@ private fun CustomTabRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = Color(0xFFF5F5F5)
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFF2F2F2)
     ) {
         TabRow(
             selectedTabIndex = tabs.indexOfFirst { it.second == selectedTab },
             containerColor = Color.Transparent,
-            indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[tabs.indexOfFirst { it.second == selectedTab }]),
-                    color = Color.Transparent
-                )
-            },
+            indicator = { Box {} },
             divider = {}
         ) {
             tabs.forEach { (title, tab) ->
@@ -125,20 +98,20 @@ private fun CustomTabRow(
                 Tab(
                     selected = selected,
                     onClick = { onTabSelected(tab) },
-                    modifier = Modifier.padding(4.dp)
+                    modifier = Modifier.padding(4.dp).clip(RoundedCornerShape(8.dp))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
                             .background(if (selected) Color.White else Color.Transparent)
-                            .padding(vertical = 12.dp),
+                            .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = title,
                             color = if (selected) Color.Black else Color.Gray,
-                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 15.sp
                         )
                     }
                 }
@@ -152,15 +125,21 @@ private fun NewsList(
     news: List<News>,
     onNewsClick: (String) -> Unit
 ) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(news, key = { it.id }) { item ->
-            NewsCard(
-                news = item,
-                onClick = { onNewsClick(item.id) }
-            )
+    if (news.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = "Пока здесь ничего нет", color = Color.Gray)
+        }
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(news, key = { it.id }) { item ->
+                NewsCard(
+                    news = item,
+                    onClick = { onNewsClick(item.id) }
+                )
+            }
         }
     }
 }
@@ -176,12 +155,13 @@ private fun NewsCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFFFD700)
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFFFD700),
+        tonalElevation = 2.dp,
+        shadowElevation = 8.dp
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -190,30 +170,33 @@ private fun NewsCard(
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = news.title,
                     color = Color.Black,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 20.sp,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = news.date.format(dateFormatter),
-                    color = Color.Black.copy(alpha = 0.7f),
-                    fontSize = 13.sp
+                    color = Color.Black.copy(alpha = 0.5f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal
                 )
             }
         }
@@ -230,26 +213,32 @@ private fun BottomNavigationBar() {
     )
 
     NavigationBar(
-        containerColor = Color.White
+        containerColor = Color.White,
+        tonalElevation = 0.dp
     ) {
         items.forEach { item ->
+            val activeColor = Color(0xFFFFD700)
             NavigationBarItem(
                 icon = {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.label,
-                        tint = if (item.selected) Color(0xFFFFD700) else Color.Gray
+                        tint = if (item.selected) activeColor else Color.LightGray
                     )
                 },
                 label = {
                     Text(
                         item.label,
-                        color = if (item.selected) Color(0xFFFFD700) else Color.Gray,
-                        fontSize = 12.sp
+                        color = if (item.selected) Color.Black else Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = if (item.selected) FontWeight.Bold else FontWeight.Normal
                     )
                 },
                 selected = item.selected,
-                onClick = { }
+                onClick = { },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = Color.Transparent
+                )
             )
         }
     }
@@ -263,24 +252,14 @@ private data class NavItem(
 
 @Composable
 private fun LoadingIndicator() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(color = Color(0xFFFFD700))
     }
 }
 
 @Composable
 private fun ErrorMessage(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            color = Color.Red,
-            modifier = Modifier.padding(16.dp)
-        )
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = message, color = Color.Red, modifier = Modifier.padding(16.dp))
     }
 }

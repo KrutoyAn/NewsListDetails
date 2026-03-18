@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.mygames.newslist.domain.repository.NewsRepository
 import ru.mygames.newslist.domain.usecase.GetNewsListUseCase
 import ru.mygames.newslist.presentation.newsList.NewsListUiState
 import ru.mygames.newslist.presentation.newsList.NewsTab
@@ -18,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NewsListViewModel @Inject constructor(
-    private val getNewsListUseCase: GetNewsListUseCase
+    private val getNewsListUseCase: GetNewsListUseCase,
+    private val repository: NewsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewsListUiState(isLoading = true))
@@ -26,6 +28,7 @@ class NewsListViewModel @Inject constructor(
 
     init {
         loadNews()
+        refresh()
     }
 
     private fun loadNews() {
@@ -37,7 +40,7 @@ class NewsListViewModel @Inject constructor(
             }
             .catch { error ->
                 _uiState.update {
-                    it.copy(isLoading = false, error = error.message)
+                    it.copy(isLoading = false, error = error?.message ?: "Unknown Error")
                 }
             }
             .launchIn(viewModelScope)
@@ -49,6 +52,14 @@ class NewsListViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                repository.refreshNews()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
         }
     }
 }
